@@ -1,17 +1,15 @@
 # Use slim Debian + Python 3.10 (MediaPipe wheels are built for this combo)
-FROM python:3.10-slim-bookworm
+FROM python:3.10-slim-bullseye
 
 # --- Runtime hygiene & speed ---
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# [FIX] Temporarily allow unauthenticated packages to install the keyring fixer
-RUN apt-get update --allow-insecure-repositories && \
-    apt-get install -y --allow-unauthenticated ca-certificates gnupg debian-archive-keyring && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends \
-      libgl1 libglib2.0-0 curl \
+# --- System libs needed by OpenCV/MediaPipe runtime ---
+# Keep libgl1 + libglib2.0-0; remove ffmpeg entirely
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      libgl1 libglib2.0-0 ca-certificates curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
