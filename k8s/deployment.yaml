@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mediapipe-fastapi
+  labels:
+    app: mediapipe-fastapi
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mediapipe-fastapi
+  template:
+    metadata:
+      labels:
+        app: mediapipe-fastapi
+    spec:
+      containers:
+        - name: app
+          image: cuecode.kr.ncr.ntruss.com/cuecode/mediapipe-fastapi:latest
+          ports:
+            - containerPort: 8000
+          env:
+            - name: MODEL_PATH
+              value: "/app/models/face_landmarker_v2_with_blendshapes.task" # Default from Dockerfile
+          resources:
+            requests:
+              cpu: "200m"
+              memory: "512Mi"
+            limits:
+              cpu: "1000m" # 1 vCPU
+              memory: "2Gi" # 2GB
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
