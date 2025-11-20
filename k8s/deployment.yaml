@@ -16,19 +16,22 @@ spec:
     spec:
       containers:
         - name: app
-          image: cuecode.kr.ncr.ntruss.com/cuecode/mediapipe-fastapi:latest
+          # [수정됨] NCP 주소 -> Azure ACR 주소로 변경
+          image: cuecoderegistry.azurecr.io/mediapipe-fastapi:latest
+          # [추가됨] 항상 최신 이미지를 가져오도록 설정
+          imagePullPolicy: Always
           ports:
             - containerPort: 8000
           env:
             - name: MODEL_PATH
-              value: "/app/models/face_landmarker_v2_with_blendshapes.task" # Default from Dockerfile
+              value: "/app/models/face_landmarker_v2_with_blendshapes.task"
           resources:
             requests:
               cpu: "200m"
               memory: "512Mi"
             limits:
-              cpu: "1000m" # 1 vCPU
-              memory: "2Gi" # 2GB
+              cpu: "1000m"
+              memory: "2Gi"
           livenessProbe:
             httpGet:
               path: /health
