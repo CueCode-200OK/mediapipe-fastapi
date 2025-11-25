@@ -7,6 +7,8 @@ from mediapipe.tasks.python import vision
 from mediapipe.tasks.python.vision.face_landmarker import FaceLandmarkerResult
 import mediapipe as mp  # core (for Image + Hands)
 
+from pydantic import BaseModel
+from app.services.sentence_service import build_sentence_for_user
 # Alias for the core mediapipe Image (NOT vision.Image)
 MPImage = mp.Image
 
@@ -104,17 +106,50 @@ async def process_motion(
                             values[bs.category_name] = float(bs.score)
                     face_blendshapes.append({"timestamp_ms": t_ms, "values": values})
 
+                # else:
+                #     # Hands path
+                #     results = hand_model.process(rgb) if hand_model else None
+                #     frame_obj = {"timestamp_ms": t_ms, "right_hand": None, "left_hand": None}
+                #     if results and results.multi_hand_landmarks:
+                #         for i, hlm in enumerate(results.multi_hand_landmarks):
+                #             coords = [[float(l.x), float(l.y), float(l.z)] for l in hlm.landmark]
+                #             if i == 0:
+                #                 frame_obj["right_hand"] = coords
+                #             elif i == 1:
+                #                 frame_obj["left_hand"] = coords
+                #     hand_series.append(frame_obj)
                 else:
                     # Hands path
                     results = hand_model.process(rgb) if hand_model else None
                     frame_obj = {"timestamp_ms": t_ms, "right_hand": None, "left_hand": None}
+
                     if results and results.multi_hand_landmarks:
-                        for i, hlm in enumerate(results.multi_hand_landmarks):
-                            coords = [[float(l.x), float(l.y), float(l.z)] for l in hlm.landmark]
-                            if i == 0:
+                        # Use handedness info instead of hard-coded index 0/1
+                        handedness_list = results.multi_handedness or []
+                        for hand_landmarks, hand_handedness in zip(
+                            results.multi_hand_landmarks, handedness_list
+                        ):
+                            # Default label empty
+                            label = ""
+                            if hand_handedness and hand_handedness.classification:
+                                label = hand_handedness.classification[0].label  # "Left" or "Right"
+
+                            coords = [
+                                [float(l.x), float(l.y), float(l.z)]
+                                for l in hand_landmarks.landmark
+                            ]
+
+                            if label == "Right":
                                 frame_obj["right_hand"] = coords
-                            elif i == 1:
+                            elif label == "Left":
                                 frame_obj["left_hand"] = coords
+                            else:
+                                # Fallback: if no label, you could choose to set right_hand if empty, etc.
+                                if frame_obj["right_hand"] is None:
+                                    frame_obj["right_hand"] = coords
+                                elif frame_obj["left_hand"] is None:
+                                    frame_obj["left_hand"] = coords
+
                     hand_series.append(frame_obj)
 
             frame_idx += 1
@@ -140,3 +175,16 @@ async def process_motion(
         "detectionArea": detectionArea,
         "motion_data": motion_data,
     }
+
+
+
+class SentenceRequest(BaseModel):
+    user_id: str
+
+class SentenceResponse(BaseModel):
+    sentence: str
+
+@app.post("/api/sentence/generate", response_model=SentenceResponse)
+def generate_sentence(req: SentenceRequest):
+    sentence = build_sentence_for_user(req.user_id)
+    return SentenceResponse(sentence=sentence)
