@@ -35,7 +35,7 @@ class GeminiClient:
 
 GPT_API_KEY = os.getenv("OPENAI_API_KEY", "")
 GPT_MODEL = os.getenv("GPT_MODEL", "gpt-4.1-2025-04-14")
-GPT_INTENT_MODEL = os.getenv("GPT_INTENT_MODEL", "gpt-4.1-mini-2025-04-14i")
+GPT_INTENT_MODEL = os.getenv("GPT_INTENT_MODEL", "gpt-4.1-mini-2025-04-14")
 
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
