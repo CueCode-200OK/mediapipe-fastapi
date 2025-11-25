@@ -1,4 +1,21 @@
 services:
+  sentence-service:
+    build: .
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GPT_MODEL=gpt-4.1-2025-04-14
+      - GPT_INTENT_MODEL=gpt-4.1-mini-2025-04-14i
+      - GEMINI_MODEL=gemini-2.5-flash
+
+      - REDIS_HOST=host.docker.internal
+      - REDIS_PORT=6380
+      - REDIS_DB=0
+      - REDIS_PASSWORD=poly1234
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+
   mediapipe:
     image: ghcr.io/tyson0922/mediapipe-fastapi:dev-py310
     ports:
