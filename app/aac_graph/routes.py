@@ -18,3 +18,12 @@ def route_normal_check(state: GraphState) -> str:
         return "finish"
     else:
         return "refine_sentence"
+
+
+def route_after_normalize(state: GraphState) -> str:
+    phrases = state.get("normalized_phrases") or []
+    # 아무 단어도 없으면 그래프 종료
+    if len(phrases) == 0:
+        return "finish"
+    # 단어가 있으면 기존 플로우 계속
+    return "continue"

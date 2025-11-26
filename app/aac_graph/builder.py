@@ -11,7 +11,7 @@ from .nodes import (
     refine_sentence,
     normal_check,
 )
-from .routes import route_intent, route_emergency_check, route_normal_check
+from .routes import route_intent, route_emergency_check, route_normal_check, route_after_normalize
 
 def build_graph():
     builder = StateGraph(GraphState)
@@ -29,8 +29,19 @@ def build_graph():
 
     builder.set_entry_point("load_recent_phrases")
 
+    # builder.add_edge("load_recent_phrases", "normalize_phrases")
+    # builder.add_edge("normalize_phrases", "intent_classifier")
+
     builder.add_edge("load_recent_phrases", "normalize_phrases")
-    builder.add_edge("normalize_phrases", "intent_classifier")
+
+    builder.add_conditional_edges(
+        "normalize_phrases",
+        route_after_normalize,
+        {
+            "finish": END,                 # phrases 비어 있으면 그래프 종료
+            "continue": "intent_classifier",  # 아니면 기존대로 intent_classifier로
+        },
+    )
 
     builder.add_conditional_edges(
         "intent_classifier",
