@@ -140,9 +140,9 @@ async def process_motion(
                             ]
 
                             if label == "Right":
-                                frame_obj["right_hand"] = coords
-                            elif label == "Left":
                                 frame_obj["left_hand"] = coords
+                            elif label == "Left":
+                                frame_obj["right_hand"] = coords
                             else:
                                 # Fallback: if no label, you could choose to set right_hand if empty, etc.
                                 if frame_obj["right_hand"] is None:
