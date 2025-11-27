@@ -38,6 +38,8 @@ spec:
           envFrom:
             - secretRef:
                 name: motion-db-secret
+            - secretRef:
+                name: motion-redis-secret
           resources:
             requests:
               cpu: "200m"
