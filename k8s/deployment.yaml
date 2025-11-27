@@ -25,6 +25,19 @@ spec:
           env:
             - name: MODEL_PATH
               value: "/app/models/face_landmarker_v2_with_blendshapes.task"
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: llm-api-keys
+                  key: OPENAI_API_KEY
+            - name: GEMINI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: llm-api-keys
+                  key: GEMINI_API_KEY
+          envFrom:
+            - secretRef:
+                name: motion-db-secret
           resources:
             requests:
               cpu: "200m"
