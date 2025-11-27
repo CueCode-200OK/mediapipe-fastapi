@@ -156,6 +156,23 @@ def normalize_phrases(state: GraphState) -> GraphState:
 # 3-3. intent_classifier (GPT mini)
 def intent_classifier(state: GraphState) -> GraphState:
     phrases = state.get("normalized_phrases", [])
+
+    if not phrases:
+        # 아예 LLM 안 부르고 바로 OTHER로
+        intent = "OTHER"
+        logger.info("[intent_classifier] empty phrases -> intent=OTHER (skip LLM)")
+        new_state: GraphState = {
+            **state,
+            "intent": intent,
+            "is_emergency": False,
+        }
+        return _append_debug(new_state, "intent_classifier", {
+            "phrases": phrases,
+            "skipped_llm": True,
+            "final_intent": intent,
+            "is_emergency": False,
+        })
+
     prompt = f"""
     너는 AAC 제스처 문장 시스템의 의도 분류기야.
     아래 입력 토큰들을 보고 의도를 네 가지 중 하나로 분류해라.
@@ -270,6 +287,11 @@ def emergency_generate(state: GraphState) -> GraphState:
 # 3-5. emergency_check (Gemini – gemini-2.5-flash)
 def emergency_check(state: GraphState) -> GraphState:
     sentence = state.get("draft_sentence", "") or ""
+
+    # 재시도 횟수 가져오기 (없으면 0)
+    retry = int(state.get("emergency_retry", 0))
+    MAX_RETRY = 2  # 필요하면 1~3 사이로 조절
+
     prompt = f"""
     너는 AAC용 긴급 문장을 검수하는 심사관이다.
 
@@ -297,30 +319,48 @@ def emergency_check(state: GraphState) -> GraphState:
     검수할 문장:
     {sentence}
     """
-    status = gemini_client.chat(prompt).strip()
-    rule_status: RuleStatus = "OK" if status == "OK" else "REWRITE"
 
-    final_sentence = sentence if rule_status == "OK" else state.get("final_sentence", "")
+    status = gemini_client.chat(prompt).strip()
+
+    # LLM이 실제로 판단한 값 (원본)
+    raw_rule_status: RuleStatus = "OK" if status == "OK" else "REWRITE"
+
+    # --- 재시도 로직 ---
+    if raw_rule_status == "REWRITE" and retry < MAX_RETRY:
+        # 아직 재시도 여유 있음 → 그래프에서 다시 emergency_generate 호출하도록 REWRITE 유지
+        rule_status: RuleStatus = "REWRITE"
+        final_sentence = state.get("final_sentence", "")
+        next_retry = retry + 1
+    else:
+        # (1) OK 를 받았거나
+        # (2) REWRITE지만 MAX_RETRY를 넘었으면 → 그냥 OK로 보고 종료
+        rule_status = "OK"
+        final_sentence = sentence
+        next_retry = retry  # 더 증가시키지 않음
 
     logger.info(
-        "[emergency_check] sentence=%s status=%s rule_status=%s",
+        "[emergency_check] sentence=%s status=%s raw_rule_status=%s rule_status=%s retry=%s",
         sentence,
         status,
+        raw_rule_status,
         rule_status,
+        retry,
     )
 
     new_state: GraphState = {
         **state,
         "rule_status": rule_status,
         "final_sentence": final_sentence,
+        "emergency_retry": next_retry,
     }
     return _append_debug(new_state, "emergency_check", {
         "checked_sentence": sentence,
         "raw_response": status,
+        "raw_rule_status": raw_rule_status,
         "rule_status": rule_status,
         "final_sentence": final_sentence,
+        "retry": next_retry,
     })
-
 
 # 3-6. normal_generate (GPT – gpt-4.1)
 def normal_generate(state: GraphState) -> GraphState:
