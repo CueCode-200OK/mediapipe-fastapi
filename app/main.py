@@ -140,9 +140,9 @@ async def process_motion(
                             ]
 
                             if label == "Right":
-                                frame_obj["right_hand"] = coords
-                            elif label == "Left":
                                 frame_obj["left_hand"] = coords
+                            elif label == "Left":
+                                frame_obj["right_hand"] = coords
                             else:
                                 # Fallback: if no label, you could choose to set right_hand if empty, etc.
                                 if frame_obj["right_hand"] is None:
@@ -184,7 +184,18 @@ class SentenceRequest(BaseModel):
 class SentenceResponse(BaseModel):
     sentence: str
 
-@app.post("/api/sentence/generate", response_model=SentenceResponse)
+# @app.post("/api/sentence/generate", response_model=SentenceResponse)
+# def generate_sentence(req: SentenceRequest):
+#     sentence = build_sentence_for_user(req.user_id)
+#     return SentenceResponse(sentence=sentence)
+
+@app.post("/api/sentence/generate")
 def generate_sentence(req: SentenceRequest):
-    sentence = build_sentence_for_user(req.user_id)
-    return SentenceResponse(sentence=sentence)
+    result_state = build_sentence_for_user(req.user_id)
+    sentence = result_state.get("final_sentence") or ""
+    debug_trace = result_state.get("debug_trace", [])
+
+    return {
+        "sentence": sentence,
+        "debug_trace": debug_trace,
+    }

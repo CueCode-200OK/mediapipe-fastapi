@@ -1,5 +1,5 @@
 # app/aac_graph/state.py
-from typing import TypedDict, List, Literal, Optional
+from typing import TypedDict, List, Literal, Optional, Any
 
 Intent = Literal["EMERGENCY", "REQUEST", "STATUS", "OTHER"]
 RuleStatus = Literal["OK", "REWRITE", "TOO_LONG", "NOT_POLITE", "UNCLEAR"]
@@ -19,3 +19,6 @@ class GraphState(TypedDict, total=False):
 
     # 오류 / 진단용
     error_message: Optional[str]
+
+    # ✅ 디버깅용: 각 단계별 로그
+    debug_trace: List[Any]
