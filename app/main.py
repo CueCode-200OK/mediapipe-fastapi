@@ -60,6 +60,7 @@ async def process_motion(
     motion_data = {}
     face_blendshapes = []
     hand_series = []
+    eye_series = []
 
     face_landmarker = None
     hand_model = None
@@ -71,6 +72,7 @@ async def process_motion(
             options = vision.FaceLandmarkerOptions(
                 base_options=base_options,
                 output_face_blendshapes=True,
+                output_face_landmarks=True, #
                 num_faces=1,
                 running_mode=vision.RunningMode.VIDEO,
             )
@@ -100,11 +102,27 @@ async def process_motion(
                     mp_image = MPImage(image_format=mp.ImageFormat.SRGB, data=rgb)
                     result: FaceLandmarkerResult = face_landmarker.detect_for_video(mp_image, t_ms)
 
-                    values = {}
-                    if result.face_blendshapes and len(result.face_blendshapes) > 0:
-                        for bs in result.face_blendshapes[0]:
-                            values[bs.category_name] = float(bs.score)
-                    face_blendshapes.append({"timestamp_ms": t_ms, "values": values})
+                    if detectionArea == "face":
+                        values = {}
+                        if result.face_blendshapes and len(result.face_blendshapes) > 0:
+                            for bs in result.face_blendshapes[0]:
+                                values[bs.category_name] = float(bs.score)
+                        face_blendshapes.append({"timestamp_ms": t_ms, "values": values})
+                    elif detectionArea == "eyes":
+                        frame_obj = {"timestamp_ms": t_ms, "right_eye": None, "left_eye": None}
+                        if result.face_landmarks and len(result.face_landmarks) > 0:
+                            landmarks = result.face_landmarks[0]
+                            # These are the specific indices for the eye contours in the 478-point mesh
+                            # Left Eye Indices
+                            LEFT_EYE_INDICES = [362, 382, 381, 380, 374, 373, 390, 249, 263, 466, 388, 387, 386, 385, 384, 398]
+                            # Right Eye Indices
+                            RIGHT_EYE_INDICES = [33, 7, 163, 144, 145, 153, 154, 155, 133, 173, 157, 158, 159, 160, 161, 246]
+
+                            left_eye_coords = [[landmarks[i].x, landmarks[i].y, landmarks[i].z] for i in LEFT_EYE_INDICES]
+                            right_eye_coords = [[landmarks[i].x, landmarks[i].y, landmarks[i].z] for i in RIGHT_EYE_INDICES]
+                            frame_obj["left_eye"] = left_eye_coords
+                            frame_obj["right_eye"] = right_eye_coords
+                        eye_series.append(frame_obj)
 
                 # else:
                 #     # Hands path
@@ -165,9 +183,11 @@ async def process_motion(
         if face_landmarker:
             face_landmarker.close()
 
-    if face_landmarker:
+    if detectionArea == "face":
         motion_data["face_blendshapes"] = face_blendshapes
-    else:
+    elif detectionArea == "eyes":
+        motion_data["eye_landmarks"] = eye_series
+    elif detectionArea in {"hand", "hands"}:
         motion_data["hand_landmarks"] = hand_series
 
     return {
